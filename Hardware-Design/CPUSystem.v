@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
 // Company: ITU Computer Engineering Department
-// Engineers: Mustafa Bozdo?an, Enes Saçak
+// Engineers: Mustafa Bozdo?an, Enes SaÃ§ak
 // Project Name: BLG222E Project 1 Simulation
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -81,7 +81,10 @@ module CPUSystem(Clock, Reset, T, rst);
                             end
                         endcase
                         if (SREG2[2]) EXECUTE_ALU(OPCODE, T, SREG1, SREG2, DSTREG); // SREG2 is already there
-                        if (!SREG2[2]) MuxASel = 2'b01; // SREG2 is in ARF
+                        if (!SREG2[2]) begin
+                            MuxASel = 2'b01; // SREG2 is in ARF
+                            ARF_RegSel = 3'b111;
+                        end
                     end
                     else if (T[3] && !(SREG1[2] || SREG2[2])) begin // both of them comes from ARF
                         case(SREG2)
@@ -188,6 +191,7 @@ module CPUSystem(Clock, Reset, T, rst);
             endcase
             RF_ScrSel = 4'b1111;
             if (DSTREG[2]) begin
+                ARF_RegSel = 3'b111;
                 RF_FunSel = 3'b010; 
                 MuxASel = 2'b00;
             end
@@ -213,22 +217,22 @@ module CPUSystem(Clock, Reset, T, rst);
     end
     initial begin
         _ALUSystem.RF.R1.Q = 10;
-        _ALUSystem.RF.R2.Q = 41;
-        _ALUSystem.RF.R3.Q = 257;
-        _ALUSystem.RF.R4.Q = 37;
+        _ALUSystem.RF.R2.Q = 0;
+        _ALUSystem.RF.R3.Q = 0;
+        _ALUSystem.RF.R4.Q = 0;
         _ALUSystem.RF.S1.Q = 0;
         _ALUSystem.RF.S2.Q = 0;
         _ALUSystem.RF.S3.Q = 0;
         _ALUSystem.RF.S4.Q = 0;
         _ALUSystem.ARF.PC.Q = 0;
-        _ALUSystem.ARF.AR.Q = 121;
-        _ALUSystem.ARF.SP.Q = 35;
+        // _ALUSystem.ARF.AR.Q = 121;
+        // _ALUSystem.ARF.SP.Q = 35;
         IR_Write = 1'b0;
         Mem_CS = 1'b0;
         Mem_WR = 1'b0;
         ALU_WF = 1'b0;
         T = 1;
-        rst = 1;
+        rst = 0;
     end 
     always @(posedge Clock) begin
         if (rst) begin
@@ -280,12 +284,12 @@ module CPUSystem(Clock, Reset, T, rst);
     always @(*) begin
         if (T[2]) begin
             IR_Write = 0;
-            ARF_RegSel = 3'b111;
         end
         case(OPCODE) 
             6'h00, 6'h01, 6'h02: begin
                 if (OPCODE == 6'h00 || (OPCODE == 6'h01 && _ALUSystem.ALU.Z == 0) || (OPCODE == 6'h02 && _ALUSystem.ALU.Z == 1)) begin
                     if (T[2]) begin
+                        ARF_RegSel = 3'b111;
                         IR_Write = 0;
                         MuxASel = 2'b01;
                         RF_ScrSel = 4'b0111;
@@ -438,6 +442,7 @@ module CPUSystem(Clock, Reset, T, rst);
             end
             6'h11, 6'h14: begin
                 if (DSTREG[2]) begin
+                    ARF_RegSel = 3'b111;
                     MuxASel = 2'b11;
                     if (OPCODE == 6'h11) RF_FunSel = 3'b110;
                     else RF_FunSel = 3'b101;
@@ -489,6 +494,7 @@ module CPUSystem(Clock, Reset, T, rst);
             end
             6'h1e: begin
                 if (T[2]) begin
+                    ARF_RegSel = 3'b111;
                     ARF_OutCSel = 2'b00;
                     MuxASel = 2'b01;
                     RF_FunSel = 3'b010;
@@ -520,25 +526,30 @@ module CPUSystem(Clock, Reset, T, rst);
             end
             6'h1f: begin
                 if (T[2]) begin
+                    ARF_FunSel = 3'b001;
+                    ARF_RegSel = 3'b110;  // increasing SP by 1
+                end
+                else if (T[3]) begin
                     ARF_OutDSel = 2'b11;
                     Mem_WR = 0;
                     Mem_CS = 0;
                     MuxBSel = 2'b10;
-                    ARF_FunSel = 3'b101; // loading the LSB of PC with M[SP]
+                    ARF_FunSel = 3'b101; // loading the LSB of PC with M[SP + 1]
                     ARF_RegSel = 3'b011; 
                 end
                 else if (T[3]) begin
                     ARF_FunSel = 3'b001;
                     ARF_RegSel = 3'b110;  // increasing SP by 1
                 end
-                else if (T[4]) begin
+                else if (T[5]) begin
                     ARF_FunSel = 3'b110;
-                    ARF_RegSel = 3'b011;  // loading the MSB of PC with M[SP + 1]
+                    ARF_RegSel = 3'b011;  // loading the MSB of PC with M[SP + 2]
                     rst = 1;
                 end
             end
             6'h20: begin
                 if (T[2]) begin
+                    ARF_RegSel = 3'b111;
                     MuxASel = 2'b11;
                     RF_FunSel = 3'b100;     // loading the selected register with LSB 8-bit of IROut
                     RF_RegSel = ((4'b1000 >> RSEL) ^ 4'b1111); // to choose the correct register's enable
@@ -548,6 +559,7 @@ module CPUSystem(Clock, Reset, T, rst);
             end
             6'h21: begin
                 if (T[2]) begin
+                    ARF_RegSel = 3'b111;
                     ARF_OutCSel = 2'b10;
                     MuxASel = 2'b01;
                     RF_FunSel = 3'b010;

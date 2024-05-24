@@ -9,7 +9,7 @@
 `define DEBUG_FILE 1
 `define DEBUG_PRINT 1
 `define E_FILE "./evaluation.csv"
-`define D_FILE "./debug.Tt"
+`define D_FILE "./debug.txt"
 
 
 module FileOperation();
